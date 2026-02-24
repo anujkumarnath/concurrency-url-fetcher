@@ -12,6 +12,51 @@ import (
 	"time"
 )
 
+type Result struct {
+	URL      string
+	Status   string
+	Size     int
+	Duration int64
+	Error    string
+}
+
+func processUrl(urlString string) Result {
+	var result Result
+
+	result.URL = urlString
+
+	startTime := time.Now()
+	resp, err := http.Get(urlString)
+
+	if err != nil {
+		var dnsErr *net.DNSError
+		if errors.As(err, &dnsErr) {
+			result.Error = "DNS lookup failed"
+		} else {
+			result.Error = err.Error()
+		}
+		return result
+	}
+
+	defer resp.Body.Close()
+
+	endTime  := time.Now()
+	duration := endTime.Sub(startTime).Milliseconds()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		result.Error = err.Error()
+		result.Duration = duration
+		return result
+	}
+
+	result.Status   = resp.Status
+	result.Size     = len(body)
+	result.Duration = duration
+
+	return result
+}
+
 func main() {
 	argsWithoutProg := os.Args[1:]
 	if len(argsWithoutProg) == 0 {
@@ -29,7 +74,6 @@ func main() {
 	fmt.Println("---------------\n")
 
 	for _, arg := range argsWithoutProg {
-
 		reqUrl, err := url.ParseRequestURI(arg)
 		if err != nil {
 			fmt.Printf("%-8s : bad-url\n",     "URL")
@@ -39,38 +83,18 @@ func main() {
 		}
 
 		urlString := reqUrl.String()
-		fmt.Printf("%-8s : %s\n", "URL", urlString)
+		result := processUrl(urlString)
 
-		startTime := time.Now()
-		resp, err := http.Get(urlString)
+		fmt.Printf("%-8s : %s\n", "URL",      result.URL)
 
-		if err != nil {
-			var dnsErr *net.DNSError
-			if errors.As(err, &dnsErr) {
-				fmt.Printf("%-8s : DNS lookup failed\n", "Error")
-			} else {
-				fmt.Printf("%-8s : %s\n", "Error", err.Error())
-			}
-			fmt.Println("--\n")
-			continue
+		if result.Error == "" {
+			fmt.Printf("%-8s : %s\n",       "Status",   result.Status)
+			fmt.Printf("%-8s : %d bytes\n", "Size",     result.Size)
+			fmt.Printf("%-8s : %d ms\n",    "Duration", result.Duration)
+		} else {
+			fmt.Printf("%-8s : %s\n", "Error",    result.Error)
 		}
 
-		endTime  := time.Now()
-		duration := endTime.Sub(startTime).Milliseconds()
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Printf("%-8s : %s\n",    "Error",    err.Error())
-			fmt.Printf("%-8s : %s ms\n", "Duration", duration)
-			fmt.Println("--\n")
-			continue
-		}
-
-		fmt.Printf("%-8s : %s\n",       "Status",   resp.Status)
-		fmt.Printf("%-8s : %d bytes\n", "Size",     len(body))
-		fmt.Printf("%-8s : %d ms\n",    "Duration", duration)
 		fmt.Println("--\n")
-
-		resp.Body.Close()
 	}
 }
