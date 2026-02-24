@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"io"
 	"time"
+	"sync"
 )
 
 type Result struct {
@@ -73,6 +74,8 @@ func main() {
 	fmt.Println("timeout     :", *timeout)
 	fmt.Println("---------------\n")
 
+	var wg sync.WaitGroup
+
 	for _, arg := range argsWithoutProg {
 		reqUrl, err := url.ParseRequestURI(arg)
 		if err != nil {
@@ -83,18 +86,27 @@ func main() {
 		}
 
 		urlString := reqUrl.String()
-		result := processUrl(urlString)
 
-		fmt.Printf("%-8s : %s\n", "URL",      result.URL)
+		wg.Add(1)
 
-		if result.Error == "" {
-			fmt.Printf("%-8s : %s\n",       "Status",   result.Status)
-			fmt.Printf("%-8s : %d bytes\n", "Size",     result.Size)
-			fmt.Printf("%-8s : %d ms\n",    "Duration", result.Duration)
-		} else {
-			fmt.Printf("%-8s : %s\n", "Error",    result.Error)
-		}
+		go func() {
+			defer wg.Done()
+			result := processUrl(urlString)
 
-		fmt.Println("--\n")
+			fmt.Printf("%-8s : %s\n", "URL", result.URL)
+
+			if result.Error == "" {
+				fmt.Printf("%-8s : %s\n",       "Status",   result.Status)
+				fmt.Printf("%-8s : %d bytes\n", "Size",     result.Size)
+				fmt.Printf("%-8s : %d ms\n",    "Duration", result.Duration)
+			} else {
+				fmt.Printf("%-8s : %s\n", "Error", result.Error)
+			}
+
+			fmt.Println("--\n")
+		}()
+
 	}
+
+	wg.Wait()
 }
