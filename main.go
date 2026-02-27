@@ -42,24 +42,18 @@ func main() {
 	urls    := make(chan string)
 	results := make(chan Result)
 
+	workerPoolSize := min(len(argsWithoutProg), *concurrency)
+	fmt.Println("workerPoolSize", workerPoolSize)
+
 	// Create n workers, n = allowed concurrency number
-	for range *concurrency {
+	for range workerPoolSize {
 		wg.Add(1)
 		go worker(&wg, urls, results)
 	}
 
 	// Assign jobs to the workers
 	for _, arg := range argsWithoutProg {
-		reqUrl, err := url.ParseRequestURI(arg)
-		if err != nil {
-			fmt.Printf("%-8s : bad-url\n",     "URL")
-			fmt.Printf("%-8s : invalid URL\n", "Error")
-			fmt.Println("--\n")
-			continue
-		}
-
-		urlString := reqUrl.String()
-		urls <- urlString
+		urls <- arg
 	}
 
 	// Signal end of jobs
@@ -88,8 +82,17 @@ func worker(wg *sync.WaitGroup, urls <-chan string, results chan<- Result) {
 	}
 }
 
-func processUrl(urlString string) Result {
+func processUrl(urlArg string) Result {
 	var result Result
+
+	reqUrl, err := url.ParseRequestURI(urlArg)
+	if err != nil {
+		result.URL = "bad-url"
+		result.Error = "invalid URL"
+		return result
+	}
+
+	urlString := reqUrl.String()
 
 	result.URL = urlString
 
