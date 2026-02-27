@@ -42,13 +42,13 @@ func main() {
 	urls    := make(chan string)
 	results := make(chan Result)
 
-	/* Create n workers, n = allowed concurrency number */
+	// Create n workers, n = allowed concurrency number
 	for range *concurrency {
 		wg.Add(1)
 		go worker(&wg, urls, results)
 	}
 
-	/* Assign jobs to the workers */
+	// Assign jobs to the workers
 	for _, arg := range argsWithoutProg {
 		reqUrl, err := url.ParseRequestURI(arg)
 		if err != nil {
@@ -62,19 +62,17 @@ func main() {
 		urls <- urlString
 	}
 
-	/* Signal end of jobs */
+	// Signal end of jobs
 	close(urls)
 
+	// Close results once all workers are done, unblocking the range loop in main
 	go func() {
-		/* Wait for all jobs to complete (all workes called wg.Done())*/
 		wg.Wait()
-		/* This allows main to move ahead and exit */
 		close(results)
 	}()
 
-	/* Read all results till results channel is closed (no more result to process) */
-	/* This also unblocks results channel */
-	 for result := range results {
+	// Read all results until results channel is closed
+	for result := range results {
 		printResult(result)
 	}
 
@@ -83,10 +81,9 @@ func main() {
 
 func worker(wg *sync.WaitGroup, urls <-chan string, results chan<- Result) {
 	defer wg.Done()
-	/* Listen for jobs as long as there is at least one to process */
+	// Listen for jobs as long as there is at least one to process
 	for url := range urls {
 		result := processUrl(url)
-		/* Blocks on results channel */
 		results <- result
 	}
 }
