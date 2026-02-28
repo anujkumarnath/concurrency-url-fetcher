@@ -52,12 +52,15 @@ func main() {
 	}
 
 	// Assign jobs to the workers
-	for _, arg := range argsWithoutProg {
-		urls <- arg
-	}
+	// Send jobs from a goroutine so main can receive results concurrently
+	go func() {
+		for _, arg := range argsWithoutProg {
+			urls <- arg
+		}
 
-	// Signal end of jobs
-	close(urls)
+		// Signal end of jobs
+		close(urls)
+	}()
 
 	// Close results once all workers are done, unblocking the range loop in main
 	go func() {
