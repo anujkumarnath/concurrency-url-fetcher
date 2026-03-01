@@ -28,7 +28,22 @@ func main() {
 	urls    := make(chan string)
 	results := make(chan Result)
 
-	workerPoolSize := min(len(argsWithoutProg), *concurrency)
+	// Using this instead of map[string]bool,
+	// because bool takes 1 byte but empty struct takes 0 bytes
+	seen := make(map[string]struct{})
+	var uniqueUrls []string
+
+	for _, arg := range argsWithoutProg {
+		if _, present := seen[arg]; present {
+			continue
+		}
+		uniqueUrls = append(uniqueUrls, arg)
+		// struct{} defines the type,
+		// and the last {} assigns an empty value to it
+		seen[arg] = struct{}{}
+	}
+
+	workerPoolSize := min(len(uniqueUrls), *concurrency)
 	fmt.Println("workerPoolSize", workerPoolSize)
 
 	// Create n workers, n = allowed concurrency number
@@ -40,7 +55,7 @@ func main() {
 	// Assign jobs to the workers
 	// Send jobs from a goroutine so main can receive results concurrently
 	go func() {
-		for _, arg := range argsWithoutProg {
+		for _, arg := range uniqueUrls {
 			urls <- arg
 		}
 
