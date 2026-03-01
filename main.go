@@ -2,26 +2,26 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"flag"
 	"sync"
 )
 
 func main() {
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) == 0 {
-		panic("no urls provided")
-	}
-
 	concurrency := flag.Int("concurrency", 5, "no. of concurrent urls to process")
 	timeout     := flag.Int("timeout",     5, "timeout in seconds")
 
 	flag.Parse()
 
 	fmt.Println("Flags:")
-	fmt.Println("concurrency :", *concurrency)
-	fmt.Println("timeout     :", *timeout)
-	fmt.Println("---------------\n")
+	fmt.Println(" - concurrency :", *concurrency)
+	fmt.Println(" - timeout     :", *timeout)
+	fmt.Println("------------------\n")
+
+	// Positional args only
+	urlsAsArgs := flag.Args()
+	if len(urlsAsArgs) == 0 {
+		panic("no urls provided")
+	}
 
 	urlProcessor := NewUrlProcessor(*timeout)
 
@@ -35,7 +35,7 @@ func main() {
 	seen := make(map[string]struct{})
 	var uniqueUrls []string
 
-	for _, arg := range argsWithoutProg {
+	for _, arg := range urlsAsArgs {
 		if _, present := seen[arg]; present {
 			continue
 		}
@@ -46,7 +46,6 @@ func main() {
 	}
 
 	workerPoolSize := min(len(uniqueUrls), *concurrency)
-	fmt.Println("workerPoolSize", workerPoolSize)
 
 	// Create n workers, n = allowed concurrency number
 	for range workerPoolSize {

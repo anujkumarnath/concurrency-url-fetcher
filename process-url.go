@@ -7,10 +7,12 @@ import (
 	"time"
 	"errors"
 	"io"
+	"fmt"
 )
 
 type UrlProcessor struct {
-	client *http.Client
+	timeout int
+	client  *http.Client
 }
 
 func NewUrlProcessor(timeout int) *UrlProcessor {
@@ -18,7 +20,8 @@ func NewUrlProcessor(timeout int) *UrlProcessor {
 		Timeout: time.Duration(timeout) * time.Second,
 	}
 	return &UrlProcessor {
-		client: client,
+		client : client,
+		timeout: timeout,
 	}
 }
 
@@ -27,6 +30,7 @@ func (u *UrlProcessor) ProcessUrl(urlArg string) Result {
 
 	reqUrl, err := url.ParseRequestURI(urlArg)
 	if err != nil {
+		fmt.Println(urlArg)
 		result.URL = "bad-url"
 		result.Error = "invalid URL"
 		return result
@@ -45,7 +49,7 @@ func (u *UrlProcessor) ProcessUrl(urlArg string) Result {
 		if errors.As(err, &dnsErr) {
 			result.Error = "DNS lookup failed"
 		} else if errors.As(err, &netErr) && netErr.Timeout() {
-			result.Error = "Request timeout"
+			result.Error = fmt.Sprintf("request timeout after %ds", u.timeout)
 		} else {
 			result.Error = err.Error()
 		}
