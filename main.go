@@ -4,22 +4,8 @@ import (
 	"fmt"
 	"os"
 	"flag"
-	"errors"
-	"net"
-	"net/http"
-	"net/url"
-	"io"
-	"time"
 	"sync"
 )
-
-type Result struct {
-	URL      string
-	Status   string
-	Size     int
-	Duration int64
-	Error    string
-}
 
 func main() {
 	argsWithoutProg := os.Args[1:]
@@ -70,7 +56,7 @@ func main() {
 
 	// Read all results until results channel is closed
 	for result := range results {
-		printResult(result)
+		PrintResult(result)
 	}
 
 	fmt.Println("All URLs processed")
@@ -80,67 +66,7 @@ func worker(wg *sync.WaitGroup, urls <-chan string, results chan<- Result) {
 	defer wg.Done()
 	// Listen for jobs as long as there is at least one to process
 	for url := range urls {
-		result := processUrl(url)
+		result := ProcessUrl(url)
 		results <- result
 	}
-}
-
-func processUrl(urlArg string) Result {
-	var result Result
-
-	reqUrl, err := url.ParseRequestURI(urlArg)
-	if err != nil {
-		result.URL = "bad-url"
-		result.Error = "invalid URL"
-		return result
-	}
-
-	urlString := reqUrl.String()
-
-	result.URL = urlString
-
-	startTime := time.Now()
-	resp, err := http.Get(urlString)
-
-	if err != nil {
-		var dnsErr *net.DNSError
-		if errors.As(err, &dnsErr) {
-			result.Error = "DNS lookup failed"
-		} else {
-			result.Error = err.Error()
-		}
-		return result
-	}
-
-	defer resp.Body.Close()
-
-	endTime  := time.Now()
-	duration := endTime.Sub(startTime).Milliseconds()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		result.Error = err.Error()
-		result.Duration = duration
-		return result
-	}
-
-	result.Status   = resp.Status
-	result.Size     = len(body)
-	result.Duration = duration
-
-	return result
-}
-
-func printResult(result Result) {
-	fmt.Printf("%-8s : %s\n", "URL", result.URL)
-
-	if result.Error == "" {
-		fmt.Printf("%-8s : %s\n",       "Status",   result.Status)
-		fmt.Printf("%-8s : %d bytes\n", "Size",     result.Size)
-		fmt.Printf("%-8s : %d ms\n",    "Duration", result.Duration)
-	} else {
-		fmt.Printf("%-8s : %s\n", "Error", result.Error)
-	}
-
-	fmt.Println("--\n")
 }
