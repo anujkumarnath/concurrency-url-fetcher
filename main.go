@@ -23,6 +23,8 @@ func main() {
 	fmt.Println("timeout     :", *timeout)
 	fmt.Println("---------------\n")
 
+	urlProcessor := NewUrlProcessor(*timeout)
+
 	var wg sync.WaitGroup
 
 	urls    := make(chan string)
@@ -49,7 +51,7 @@ func main() {
 	// Create n workers, n = allowed concurrency number
 	for range workerPoolSize {
 		wg.Add(1)
-		go worker(&wg, urls, results)
+		go worker(&wg, urls, results, urlProcessor)
 	}
 
 	// Assign jobs to the workers
@@ -77,11 +79,11 @@ func main() {
 	fmt.Println("All URLs processed")
 }
 
-func worker(wg *sync.WaitGroup, urls <-chan string, results chan<- Result) {
+func worker(wg *sync.WaitGroup, urls <-chan string, results chan<- Result, up *UrlProcessor) {
 	defer wg.Done()
 	// Listen for jobs as long as there is at least one to process
 	for url := range urls {
-		result := ProcessUrl(url)
+		result := up.ProcessUrl(url)
 		results <- result
 	}
 }
