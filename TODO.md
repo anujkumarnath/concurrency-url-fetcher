@@ -1,5 +1,6 @@
 - [ ] Fix blocking result printing before worker can pick another job
-- [ ] Fix project structue
+- [ ] Fix project structure
+- [ ] Fix printing of bad urls
 ```
     -concurrent-url-fetcher/
     │

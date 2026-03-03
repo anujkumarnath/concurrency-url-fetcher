@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"fmt"
+	"context"
 )
 
 type UrlProcessor struct {
@@ -25,7 +26,7 @@ func NewUrlProcessor(timeout int) *UrlProcessor {
 	}
 }
 
-func (u *UrlProcessor) ProcessUrl(urlArg string) Result {
+func (u *UrlProcessor) ProcessUrl(ctx context.Context, urlArg string) Result {
 	var result Result
 
 	reqUrl, err := url.ParseRequestURI(urlArg)
@@ -40,18 +41,30 @@ func (u *UrlProcessor) ProcessUrl(urlArg string) Result {
 
 	result.URL = urlString
 
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlString, nil)
+	if err != nil {
+		fmt.Println("error forming request", err.Error())
+	}
+
 	startTime := time.Now()
-	resp, err := u.client.Get(urlString)
+	// resp, err := u.client.Get(urlString)
+	resp, err := u.client.Do(req)
 
 	if err != nil {
-		var dnsErr *net.DNSError
-		var netErr net.Error
-		if errors.As(err, &dnsErr) {
-			result.Error = "DNS lookup failed"
-		} else if errors.As(err, &netErr) && netErr.Timeout() {
-			result.Error = fmt.Sprintf("request timeout after %ds", u.timeout)
+		if ctx.Err() == context.DeadlineExceeded {
+			result.Error = "cancelled (global timeout)"
+		} else if ctx.Err() == context.Canceled {
+			result.Error = "cancelled (user interrupted)"
 		} else {
-			result.Error = err.Error()
+			var dnsErr *net.DNSError
+			var netErr net.Error
+			if errors.As(err, &dnsErr) {
+				result.Error = "DNS lookup failed"
+			} else if errors.As(err, &netErr) && netErr.Timeout() {
+				result.Error = fmt.Sprintf("request timeout after %ds", int(time.Since(startTime).Seconds()))
+			} else {
+				result.Error = err.Error()
+			}
 		}
 		return result
 	}
