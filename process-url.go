@@ -32,7 +32,7 @@ func (u *UrlProcessor) ProcessUrl(ctx context.Context, urlArg string) Result {
 	reqUrl, err := url.ParseRequestURI(urlArg)
 	if err != nil {
 		fmt.Println(urlArg)
-		result.URL = "bad-url"
+		result.URL = urlArg
 		result.Error = "invalid URL"
 		return result
 	}

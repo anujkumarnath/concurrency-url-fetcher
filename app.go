@@ -40,12 +40,18 @@ func StartApp(ctx context.Context, concurrency int, timeout int, urlsAsArgs []st
 	// Assign jobs to the workers
 	// Send jobs from a goroutine so main can receive results concurrently
 	go func() {
+		// Signal end of jobs
+		defer close(urls)
+
 		for _, arg := range uniqueUrls {
-			urls <- arg
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				urls <- arg
+			}
 		}
 
-		// Signal end of jobs
-		close(urls)
 	}()
 
 	// Close results once all workers are done, unblocking the range loop in main
@@ -59,7 +65,6 @@ func StartApp(ctx context.Context, concurrency int, timeout int, urlsAsArgs []st
 		PrintResult(result)
 	}
 
-	fmt.Println("All URLs processed")
 }
 
 func worker(
