@@ -42,7 +42,10 @@ func main() {
 	);
 	defer stop()
 
-	go StartApp(ctx, *concurrency, *timeout, urlsAsArgs)
+	go func () {
+		StartApp(ctx, *concurrency, *timeout, urlsAsArgs)
+		cancel()
+	}()
 
 	<-ctx.Done()
 	fmt.Println("Shutting down gracefully...")
