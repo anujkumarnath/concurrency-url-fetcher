@@ -8,6 +8,9 @@ import (
 func StartApp(ctx context.Context, concurrency int, timeout int, urlsAsArgs []string) {
 	urlProcessor := NewUrlProcessor(timeout)
 
+	// To avoid leaking goroutine from open http client
+	defer urlProcessor.Clean()
+
 	var wg sync.WaitGroup
 
 	urls    := make(chan string)

@@ -26,6 +26,10 @@ func NewUrlProcessor(timeout int) *UrlProcessor {
 	}
 }
 
+func (u *UrlProcessor) Clean() {
+	u.client.CloseIdleConnections()
+}
+
 func (u *UrlProcessor) ProcessUrl(ctx context.Context, urlArg string) Result {
 	var result Result
 
